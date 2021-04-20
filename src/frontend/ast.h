@@ -59,6 +59,9 @@ public:
     NExpr &value;
     NCond(NExpr &value);
     void generate(std::stringstream &buff, std::string true_label, std::string false_label);
+    virtual void generate_cond(std::stringstream &buff, std::string true_label, std::string false_label);
+    virtual std::string generate(std::stringstream &buff);
+    virtual std::string generate_lval(std::stringstream &buff);
 };
 class NBiExpr : public NExpr {
 public:

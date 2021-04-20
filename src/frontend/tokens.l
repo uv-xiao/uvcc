@@ -33,8 +33,7 @@
   /*** comment, newline, blank ***/
 \/\/.*\n?       {PASS;}
 \/\*            {COMMENT;}
-[ ]             {}
-\t              {}
+[ \t\r]         {}
 \n              {NEWLINE;}
 
   /*** type ***/
@@ -133,7 +132,12 @@
 "}"             {return TOKEN(RB);}
 
 .               {
-                std::cerr << "Unmatched text: " << yytext << std::endl;
+                std::string str = yytext;
+                str = str + " ";
+                for (auto x : std::string(yytext)) {
+                    str = str + std::to_string((int)x) + " ";
+                }
+                std::cerr << "Unmatched text: " << str << std::endl;
                 yyterminate();
             }            
 
