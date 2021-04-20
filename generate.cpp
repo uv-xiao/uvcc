@@ -338,7 +338,8 @@ std::string NUExpr::generate(std::stringstream &buff) {
     #endif
     std::string var = next_temp_var();
     std::string addr = rhs.generate(buff);
-    buff << var << " = " << get_op(op) << " " << addr << std::endl;
+    std::string oper = op == ADD ? "" : get_op(op);
+    buff << var << " = " << oper << " " << addr << std::endl;
     return var;
 }
 int NUExpr::eval() {
