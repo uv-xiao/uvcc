@@ -23,4 +23,6 @@ extern std::string return_label;
 extern std::vector<std::string> while_start_label;
 extern std::vector<std::string> while_exit_label;
 extern std::string FALL;
+extern std::string get_opposite_op(std::string oper);
+extern std::string get_op(int op);
 #endif //UVCC_GENERATE_H

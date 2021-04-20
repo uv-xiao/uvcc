@@ -4,6 +4,8 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <string>
 
 NRoot *root;
 
@@ -172,8 +174,6 @@ EqOp:   EQ
 InitVal:    AddExp;
 
 Exp:    AddExp;
-Cond:   LOrExp  { $$ = new NCond(*$1); }
-    ;
 
 PrimaryExp: LP Cond RP  { $$ = $2; }
           | LVal
@@ -209,6 +209,9 @@ LOrExp: LOrExp OR LAndExp   { $$ = new NBiExpr(*$1, $2, *$3); }
       | LAndExp OR LAndExp  { $$ = new NBiExpr(*$1, $2, *$3); }
       | LAndExp
       ;
+
+Cond:   LOrExp  { $$ = new NCond(*$1); }
+    ;
 
 /* function */
 /*** function declaration ***/
@@ -296,4 +299,29 @@ void yyerror(const char *s) {
     printf("Error(line %d): %s\n", yyget_lineno(), s);
     yylex_destroy();
     if (!yydebug) exit(1);
+}
+
+
+std::string get_op(int op) {
+    switch (op) {
+        case ADD: return "+";
+        case MUL: return "*";
+        case MINUS: return "-";
+        case DIV: return "/";
+        case MOD: return "%";
+        case GT: return ">";
+        case LT: return "<";
+        case GE: return ">=";
+        case LE: return "<=";
+        case EQ: return "==";
+        case NE: return "!=";
+        case AND: return "&&";
+        case OR: return "||";
+        case NOT: return "!";
+        default: return "F**K";
+    }
+}
+std::string get_opposite_op(std::string oper) {
+    if (oper == "==") return "!=";
+    else return "==";
 }
