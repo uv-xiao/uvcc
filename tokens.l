@@ -33,7 +33,7 @@
   /*** comment, newline, blank ***/
 \/\/.*\n?       {PASS;}
 \/\*            {COMMENT;}
-[ \t]             {}
+[ \t\r]         {}
 \n              {NEWLINE;}
 
   /*** type ***/

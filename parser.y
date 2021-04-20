@@ -175,7 +175,7 @@ InitVal:    AddExp;
 
 Exp:    AddExp;
 
-PrimaryExp: LP Cond RP  { $$ = $2; }
+PrimaryExp: LP Exp RP  { $$ = $2; }
           | LVal
           | Number
           ;

@@ -265,7 +265,7 @@ void NArrayVal::generate(std::stringstream &buff, Symbol *symbol, int offset, in
 
 std::string NBiExpr::generate(std::stringstream &buff) {
     #ifdef DEBUG
-    std::cout << "generate NBiExpr: " << getop(op) << std::endl;
+    std::cout << "generate NBiExpr: " << get_op(op) << std::endl;
     #endif
     std::string var = next_temp_var();
     std::string laddr = lhs.generate(buff);
@@ -334,7 +334,7 @@ void NBiExpr::debug() {
 
 std::string NUExpr::generate(std::stringstream &buff) {
     #ifdef DEBUG
-    std::cout << "generate NUExpr: " << getop(op) << std::endl;
+    std::cout << "generate NUExpr: " << get_op(op) << std::endl;
     #endif
     std::string var = next_temp_var();
     std::string addr = rhs.generate(buff);
