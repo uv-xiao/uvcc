@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstdio>
 #include <sstream>
+#include <assert.h>
 
 
 namespace utils{
@@ -18,11 +19,12 @@ std::vector<std::string> split(const std::string &s, char sep) {
         if (part.length() > 0)
           ret.push_back(part);
         part = "[";
-      }
-      else if (ch == ']') {
-        part = part + "]";
-        ret.push_back(part);
-        part = "";
+        while (sin.get(ch) && ch != ']') {
+          if (ch != ' ')
+            part = part + ch;
+        }
+        assert(ch == ']');
+        part = part + ch;
       }
       else if ((ch == sep || ch == '\n')) {
         if (part.length() > 0)

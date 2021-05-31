@@ -20,6 +20,9 @@ public:
   virtual bool operator < (const RVar &b) const {
     return getName() < b.getName();
   }
+  virtual bool operator == (const RVar &b) const {
+    return getName() == b.getName();
+  }
   
   static rvar_sptr buildRVar(const std::string &name);
 };
@@ -50,6 +53,9 @@ public:
   static evar_sptr buildEVar(const std::string &name);
   bool operator < (const EVar &b) const {
     return name < b.name;
+  }
+  bool operator == (const EVar &b) const {
+    return name == b.name;
   }
 };
 

@@ -27,6 +27,9 @@ struct VarInfo {
   bool operator < (const VarInfo &b) const {
     return *var < *(b.var);
   }
+  bool operator == (const VarInfo &b) const {
+    return *var == *b.var;
+  }
 };
 
 class RegPool { 

@@ -8,6 +8,9 @@
 
 namespace obj
 {
+  
+extern bool DEBUG_FLAG;
+
 class RVar;
 class Imm;
 class EVar;
