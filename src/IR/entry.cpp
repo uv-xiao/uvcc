@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-int DEBUG_LEVEL = 1;
+int DEBUG_LEVEL = 0;
 void testSplit() {
   std::string str("if T0 <= 10 goto l0");
   std::cerr << str << std::endl;
@@ -26,9 +26,6 @@ void testIR(char *inputf = nullptr, char * outputf = nullptr) {
   mgr.codegen(stdout);
 }
 
-void runIR() {
-
-}
 int main(int argc, char **argv) {
   if (DEBUG_LEVEL == 1) {
     if (argc == 1)
@@ -42,6 +39,6 @@ int main(int argc, char **argv) {
     testSplit();
   }
   else {
-    runIR();
+    testIR(argv[3], argv[5]);
   }
 }
