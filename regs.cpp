@@ -36,10 +36,22 @@ std::map<Reg, RegID_t> globalRegs_r {
   {"a6", 25}, {"a7", 26}
 };
 RegAllocator::Alloc_t RegAllocator::allocate() {
+
+  if (obj::DEBUG_FLAG) {
+    std::cerr << "Register Allocation" << std::endl;
+    std::cerr << "  liveTable:" << std::endl;
+    for (auto entry : liveTable) {
+      std::cerr << "    " << entry.first << ": ";
+      for (auto entry1 : entry.second)
+        std::cerr << entry1.getName() << " ";
+      std::cerr << std::endl;
+    }
+  }
   Alloc_t ret;
   std::map<EVar, RegID_t> regs;
   
   std::vector<LiveInfo> intervals;
+
   {
     std::map<EVar, LiveInfo> tmp;
     for (auto entry : liveTable) {
@@ -48,8 +60,7 @@ RegAllocator::Alloc_t RegAllocator::allocate() {
           auto pvar = globalPool.getVar(var.getName());
           tmp[var] = LiveInfo(entry.first, entry.first, pvar);
         }
-        auto &interval = tmp[var];
-        interval.end = entry.first;
+        tmp[var].end = entry.first;
       }
     }
     for (auto entry : tmp) {

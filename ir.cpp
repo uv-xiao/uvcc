@@ -1,11 +1,15 @@
 #include "ir.h"
+#include "types.h"
 #include "regs.h"
 #include "utils.h"
 #include <algorithm>
 
+namespace obj {
+  
+} // namespace obj
+
 namespace ir {
 
-bool DEBUG_FLAG = 1;
 
 // class EIsnt
 // int EInst::getPrevLineno() {
@@ -201,8 +205,16 @@ void Function::setupRegs(obj::LiveTable &liveTable) {
   allocateResult = regAllocator->allocate();
   usedRegs = regAllocator->getUsedRegs();
 
-  if (DEBUG_FLAG) {
+  if (obj::DEBUG_FLAG) {
     // TODO: debug print
+    std::cerr << "allocateResult:" << std::endl;
+    for (auto entry1 : allocateResult) {
+      std::cerr << "  Line " << entry1.first << ": ";
+      for (auto entry2 : entry1.second) {
+        std::cerr << entry2.var->getName() << "(" << entry2.regID << ") "; 
+      }
+      std::cerr << std::endl;
+    }
   }
 }
 
@@ -524,7 +536,7 @@ std::vector<i_sptr> EInstManager::succ(InstTable &instTable, int lineno) {
 
   if (ISA(inst.get(), EReturn)) goto Special;
   if (ISA(inst.get(), ERetVoid)) goto Special;
-  if (ISA(inst.get(), EFunc)) goto Special;
+  // if (ISA(inst.get(), EFunc)) goto Special;
   if (ISA(inst.get(), EEndFunc)) goto Special;
   
   if (next != instTable.end()) 
@@ -564,7 +576,7 @@ void EInstManager::codegen(FILE *f) {
                                         defarr->getLength());
     }
     else {
-      auto fmain = this->getFunc("f_main");
+      auto fmain = getFunc("f_main");
       fmain->addInst(inst);
       inst->setFunc(fmain);
     }
@@ -586,11 +598,12 @@ void EInstManager::codegen(FILE *f) {
 
     entry.second->setupRegs(liveness);
 
-    if (DEBUG_FLAG) {
+    if (obj::DEBUG_FLAG) {
       std::cerr << "After Optimize: " << std::endl;
       for (auto inst : entry.second->getInsts()) {
-        std::cerr << "Line " << inst.first << ": " << inst.second->getCode()
-          << " -- ";
+        // std::cerr << "Line " << inst.first << ": " << inst.second->getCode() << std::endl;
+        std::cerr << "[Line " << inst.first  << "] " << inst.second->getCode() 
+            << std::endl << " ";
         inst.second->dbg_print();
       }
     }
@@ -623,12 +636,33 @@ obj::LiveTable LivenessAnalysis(EInstManager &mgr, const std::string &fname) {
     graph[entry.first] = Node(entry.second);
   }
 
+  if (obj::DEBUG_FLAG) {
+    std::cerr << "Liveness Analysis" << std::endl;
+    std::cerr << " Insts:" << std::endl;
+    for (auto i : insts) {
+      std::cerr << "    " << i.first << ": " << i.second->getCode() << std::endl;
+      std::cerr << "    --- ";
+      std::cerr << "def{";
+      for (auto def : i.second->getDef())
+        std::cerr << def.getName() << " ";
+      std::cerr << "} use{";
+      for (auto use : i.second->getUse())
+        std::cerr << use.getName() << " ";
+      std::cerr <<"}" << std::endl;
+    }
+      
+  }
+
   bool done = false;
   while (!done) {
     done = true;
     for (auto entry : insts) {
       Node &node = graph[entry.first];
 
+      // if (obj::DEBUG_FLAG) {
+      //   std::cerr << "update " << node.inst->getCode() << std::endl;
+      // }
+      // node.in = node.out - node.def + node.use
       EVarSet in1(node.out);
       for (auto def : node.inst->getDef())
         in1.erase(def);
@@ -639,20 +673,49 @@ obj::LiveTable LivenessAnalysis(EInstManager &mgr, const std::string &fname) {
         done = false;
       node.in.swap(in1);
 
+      // if (obj::DEBUG_FLAG) {
+      //   std::cerr << "  new_in: ";
+      //   for (auto entry : node.in)
+      //     std::cerr << entry.getName() << " ";
+      //   std::cerr << std::endl;
+      // }
+
+      // node.out = merge(x.in : x in succs)
       EVarSet out1;
       auto succs = mgr.succ(insts, node.inst->getLine());
       for (auto succ : succs) {
         auto succNode = graph[succ->getLine()];
         out1.insert(succNode.in.begin(), succNode.in.end());
       }
+
       if (!isSameSet(node.out, out1))
         done = false;
       node.out.swap(out1);
+
+      // if (obj::DEBUG_FLAG) {
+      //   std::cerr << "  new_out: ";
+      //   for (auto entry : node.out)
+      //     std::cerr << entry.getName() << " ";
+      //   std::cerr << std::endl;
+      // }
     }
+
+    
   }
   for (auto entry : insts) {
     auto &node = graph[entry.first];
     liveness[entry.first].insert(node.out.begin(), node.out.end());
+  }
+
+  if (obj::DEBUG_FLAG) {
+    std::cerr << "Finish, liveTable:" << std::endl;
+    for (auto entry : liveness) {
+      std::cerr << "    " << entry.first << ": ";
+      for (auto entry1 : entry.second) {
+        std::cerr << entry1.getName() << " ";
+      }
+      std::cerr << std::endl;
+    }
   }
   
   return liveness;

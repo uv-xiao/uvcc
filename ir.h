@@ -17,7 +17,6 @@
 namespace ir {
   
 
-extern bool DEBUG_FLAG;
 class EInst;
 
 /* subclass of EInst  */
@@ -259,7 +258,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "ELable: " + name << std::endl;
+    std::cerr << "ELable: "  << name << std::endl;
   }
 };
 
@@ -308,7 +307,7 @@ public:
     return "";
   } 
   virtual void dbg_print() const override {
-    std::cerr << "EJump : " + targetLabel << std::endl;
+    std::cerr << "EJump : " << targetLabel << std::endl;
   }
 };
 
@@ -334,7 +333,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EDefVar : " + var->getName() << std::endl;
+    std::cerr << "EDefVar : " <<  var->getName() << std::endl;
   }
   evar_sptr getVar() { return var; }
 };
@@ -361,7 +360,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EParam : "  + var->getName() << std::endl;
+    std::cerr << "EParam : "  <<  var->getName() << std::endl;
   }
   
 };
@@ -389,7 +388,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EReturn :" << var->getName() << std::endl;
+    std::cerr << "EReturn : " << var->getName() << std::endl;
   }
 
 };
@@ -418,7 +417,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EFunc : " + name + " " + paramInfo << std::endl;
+    std::cerr << "EFunc : " << name << " " << paramInfo << std::endl;
   }
 };
 
@@ -447,7 +446,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "ECallVoid " + name << std::endl;
+    std::cerr << "ECallVoid " << name << std::endl;
   }
 };
 
@@ -471,7 +470,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EEndFunc " + name << std::endl;
+    std::cerr << "EEndFunc " << name << std::endl;
   }
 };
 
@@ -498,7 +497,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EDefArr : " + var->getName() + " " + std::to_string(len)
+    std::cerr << "EDefArr : " << var->getName() << " " << len
               << std::endl;
   }
 };
@@ -522,7 +521,7 @@ public:
   }
   virtual std::string codegen(FILE *f) override; // TODO
   virtual void dbg_print() const override {
-    std::cerr << "EAssign : " + lvar->getName() + " = " + rvar->getName()
+    std::cerr << "EAssign : " << lvar->getName() << " = "  <<rvar->getName()
               << std::endl; 
   }
 }; 
@@ -555,8 +554,8 @@ public:
   }
 
   virtual void dbg_print() const override {
-    std::cerr << "EStoreArr: " + lvar->getName() + "[" + offset->getName()
-                  + "] = " + rvar->getName() << std::endl;  
+    std::cerr << "EStoreArr: " << lvar->getName() << "[" << offset->getName()
+                  << "] = " << rvar->getName() << std::endl;  
   }
 };  
 
@@ -598,7 +597,7 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "ECall : " + name + " -> " + lvar->getName() << std::endl;
+    std::cerr << "ECall : " << name << " -> " << lvar->getName() << std::endl;
   }
 };
 
@@ -631,8 +630,8 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "EUnaryExpr : " + lvar->getName() + " = " +
-                 op + " " + rvar->getName() << std::endl;
+    std::cerr << "EUnaryExpr : " << lvar->getName() << " = " <<
+                 op << " " << rvar->getName() << std::endl;
   }
 };
 
@@ -667,8 +666,8 @@ public:
     return "";
   }
   virtual void dbg_print() const override {
-    std::cerr << "ELoadArr : " + lvar->getName() + " = " + rvar->getName()
-                 + "[" + offset->getName() +"]" << std::endl;
+    std::cerr << "ELoadArr : " << lvar->getName() << " = " << rvar->getName()
+                 << "[" << offset->getName() << "]" << std::endl;
   }
 };
 
@@ -692,7 +691,7 @@ public:
   evar_sptr getLVar() { return lvar; }
   virtual std::string codegen(FILE *f)  override;
   virtual void dbg_print() const override {
-    std::cerr << "EBinaryExpr : " + lvar->getName() << " = " 
+    std::cerr << "EBinaryExpr : " << lvar->getName() << " = " 
               << rvar1->getName() << op << rvar2->getName() << std::endl;
   }
 };
