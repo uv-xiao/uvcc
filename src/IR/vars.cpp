@@ -3,6 +3,8 @@
 
 namespace obj {
 
+bool DEBUG_FLAG = 1;
+
 GlobalVarManager globalVars;
 VarPool globalPool;
 

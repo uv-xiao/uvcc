@@ -6,7 +6,6 @@
 
 namespace obj {
   
-bool DEBUG_FLAG = 1;
 } // namespace obj
 
 namespace ir {
