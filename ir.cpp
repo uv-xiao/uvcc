@@ -227,6 +227,8 @@ i_sptr Function::getPrevInst(i_sptr inst) {
       + " is not in function");
     return nullptr;
   }
+  if (it == instTable.begin())
+    return nullptr;
   -- it;
   return it->second;
 }
@@ -294,7 +296,7 @@ void Function::codegen(FILE *f) {
     for (auto &var : allocated) {
       if (liveVars.find(*(var.var.get())) == liveVars.end()) {
         liveVars.insert(*(var.var.get()));
-        loadVariable(f, var.var, var.regID);
+        loadVariable(f, inst.second->getPrevLineno() == 0, var.var, var.regID);
       }
     }
 
@@ -303,7 +305,7 @@ void Function::codegen(FILE *f) {
       [this, &allocated, f](auto &spillinfo) {
         auto var = spillinfo.var;
         obj::VarInfo varinfo = *allocated.find(obj::VarInfo(var, -1));
-        this->backToStack(f, var, varinfo.regID);
+        backToMemory(f, var, varinfo.regID);
         fprintf(f, "    // spill var \n");
       });
   }
@@ -397,14 +399,18 @@ void Function::backToMemory(FILE *f, evar_sptr var, int reg, int offreg) {
   }
 }
 
-void Function::loadVariable(FILE *f, evar_sptr var, int reg) {
+void Function::loadVariable(FILE *f, bool isFirst, evar_sptr var, int reg) {
+  // if (isFirst) {
+  //   obj::globalVars.codegen_loadVar(f, var, obj::globalRegs[reg]);
+  // }
+  // else if (obj::globalVars.isGlobalVar(var)) {
+  //   if (var->isArray())
   if (obj::globalVars.isGlobalVar(var)) {
-    obj::globalVars.codegen_loadVar(f, var, obj::globalRegs[reg]);
-  } else {
+      obj::globalVars.codegen_loadVar(f, var, obj::globalRegs[reg]);
+  }
+  else if (var->isArray()) {
     auto offset = stackFrame.addressOfVar(var);
-    if (var->isArray()) {
-      stackFrame.codegen_lea(f, offset, reg);
-    }
+    stackFrame.codegen_lea(f, offset, reg);
   }
 }
 

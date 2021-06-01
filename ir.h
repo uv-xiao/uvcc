@@ -147,7 +147,7 @@ public:
   void backToStack(FILE *f, evar_sptr lvar, int reg, int offreg = 0);
   void backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg = 0);
   void backToMemory(FILE *f, evar_sptr var, int reg, int offreg = 0);
-  void loadVariable(FILE *f, evar_sptr var, int reg);
+  void loadVariable(FILE *f,  bool isFirst, evar_sptr var, int reg);
   
 };
 
@@ -591,9 +591,13 @@ public:
     auto lreg = this->f->getReg(f, lvar, lineno);
     this->f->endCall(f);
     fprintf(f, "%s = a0\n", lreg.c_str());
-    
+    // fflush(f);
     auto offset = this->f->getStack().addressOfReg(19);
     this->f->getStack().codegen_spillout(f, offset, 19);
+    // fflush(f);
+    if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+      this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    }
     return "";
   }
   virtual void dbg_print() const override {
