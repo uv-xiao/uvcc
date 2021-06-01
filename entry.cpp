@@ -4,7 +4,7 @@
 
 #include <iostream>
 
-int DEBUG_LEVEL = 0;
+int DEBUG_LEVEL = 1;
 
 void testSplit() {
   std::string str("if T0 <= 10 goto l0");
