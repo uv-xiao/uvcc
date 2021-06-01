@@ -112,55 +112,5 @@ public:
   void dbg_print() {};
 };
 
-class RegAllocator {
-public:
-  struct LiveInfo {
-    int start, end;
-    evar_sptr  var;
-    LiveInfo() : start(0), end(0), var(nullptr) {}
-    LiveInfo(int start, int end, evar_sptr var)
-      : start(start), end(end), var(var) {}
-    bool operator < (const LiveInfo &b) const {
-      return end < b.end;
-    }
-  };
-  struct SpillInfo {
-    int line;
-    evar_sptr var;
-    SpillInfo(int line, evar_sptr var)
-      : line(line), var(var) {}
-    bool operator < (const SpillInfo &b) const {
-      return line < b.line; 
-    }
-  };
-  using Active_t = std::set<LiveInfo>;
-private:
-  RegPool pool;
-  std::set<RegID_t> usedRegs;
-  std::multiset<SpillInfo> spillSet;
-  LiveTable &liveTable;
-  StackFrame &stackFrame;
-  
-  void _insertSpill(int line, evar_sptr var) {
-    SpillInfo obj(line, var);
-    spillSet.insert(obj);
-  }
-
-public: 
-  using VarInfoSet = std::set<VarInfo>;
-  using Alloc_t = std::map<int, VarInfoSet>;
-
-  RegAllocator(LiveTable &liveTable, StackFrame &stackFrame) 
-    : pool(), liveTable(liveTable), stackFrame(stackFrame) {}
-  Alloc_t allocate();
-  decltype(spillSet.equal_range({1, NULL})) 
-      getSpillInfo(int line) {
-        return spillSet.equal_range({line, NULL});
-      }
-  const std::set<RegID_t> &getUsedRegs() const {
-    return usedRegs;
-  }
-};
-
 } // namespace obj
 #endif // _REGS_H_ 
