@@ -129,6 +129,7 @@ public:
 
   void codegen_storeVar(FILE *f, evar_sptr var, int offreg, int vallreg);
   void codegen_loadVar(FILE *f, evar_sptr var, const std::string &reg);
+  // void codegen_lea(FILE *f, evar_sptr var, const std::string &reg);
 
   void allocateGlobalVar(FILE *f, evar_sptr var, int initval = 0);
   void allocateGlobalArr(FILE *f, evar_sptr var, int size);

@@ -52,7 +52,7 @@ void StackFrame::codegen_lea(FILE *f, int offset, RegID_t rid) {
 void StackFrame::codegen_spillin(FILE *f, int offset, RegID_t rid, 
                                   RegID_t offreg) {
   if (offreg > 0) {
-    fprintf(f, "loadaddr %s t6\nt6 = %s\nt6 [0] = %s\n",
+    fprintf(f, "loadaddr %s t6\nt6 = t6 + %s\nt6 [0] = %s\n",
                 std::to_string(offset).c_str(),
                 globalRegs[offreg].c_str(), globalRegs[rid].c_str());
   } else {

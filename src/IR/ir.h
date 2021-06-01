@@ -138,6 +138,7 @@ public:
   
   // other methods for codegen
   void codegen(FILE *f);
+  std::string getRegFromMem(FILE *f, rvar_sptr rvar, bool mustReg = 0);
   std::string getReg(FILE *f, std::shared_ptr<obj::RVar> rvar, int lineno);
   std::string prepareParam(FILE *f);
   void startFunc(FILE *f);
@@ -355,7 +356,7 @@ public:
   }
   virtual std::string codegen(FILE *f)  override {
     auto preparation = this->f->prepareParam(f);
-    auto result = this->f->getReg(f, var, getPrevLineno());
+    auto result = this->f->getRegFromMem(f, var);
     fprintf(f, "%s = %s\n", preparation.c_str(), result.c_str());
     return "";
   }
@@ -381,7 +382,7 @@ public:
       return 0;
   }
   virtual std::string codegen(FILE *f)  override {
-    auto reg = this->f->getReg(f, var, getPrevLineno());
+    auto reg = this->f->getRegFromMem(f, var);
     fprintf(f, "a0 = %s\n", reg.c_str());
     this->f->endFunc(f);
     fprintf(f, "return\n");
@@ -412,7 +413,7 @@ public:
   std::string getParam() { return paramInfo; }
   virtual std::string codegen(FILE *f)  override {
     auto size = this->f->getStack().size();
-    fprintf(f, "%s %s [%d]\n", name.c_str(), paramInfo.c_str(), size);
+    fprintf(f, "%s %s [%d]\n", name.c_str(), paramInfo.c_str(), size + 1);
     this->f->startFunc(f);
     return "";
   }
@@ -441,8 +442,8 @@ public:
     fprintf(f, "call %s\n", name.c_str());
     this->f->endCall(f);
 
-    auto offset = this->f->getStack().addressOfReg(19);
-    this->f->getStack().codegen_spillout(f, offset, 19);
+    // auto offset = this->f->getStack().addressOfReg(19);
+    // this->f->getStack().codegen_spillout(f, offset, 19);
     return "";
   }
   virtual void dbg_print() const override {
@@ -544,9 +545,10 @@ public:
       return 0;
   }
   virtual std::string codegen(FILE *f)  override {
-    auto lreg = this->f->getReg(f, lvar, lineno);
-    auto rreg = this->f->getReg(f, rvar, getPrevLineno());
-    auto offset_reg = this->f->getReg(f, offset, getPrevLineno());
+    // dbg_print();
+    auto lreg = this->f->getRegFromMem(f, lvar);
+    auto rreg = this->f->getRegFromMem(f, rvar, 1);
+    auto offset_reg = this->f->getRegFromMem(f, offset, 1);
 
     this->f->backToMemory(f, lvar, obj::globalRegs_r[rreg], 
                           obj::globalRegs_r[offset_reg]);
@@ -588,14 +590,14 @@ public:
   virtual std::string codegen(FILE *f)  override {
     this->f->prepareCall(f);
     fprintf(f, "call %s\n", name.c_str());
-    auto lreg = this->f->getReg(f, lvar, lineno);
+    auto lreg = this->f->getRegFromMem(f, lvar);
     this->f->endCall(f);
     fprintf(f, "%s = a0\n", lreg.c_str());
     // fflush(f);
-    auto offset = this->f->getStack().addressOfReg(19);
-    this->f->getStack().codegen_spillout(f, offset, 19);
+    // auto offset = this->f->getStack().addressOfReg(19);
+    // this->f->getStack().codegen_spillout(f, offset, 19);
     // fflush(f);
-    if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+    if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
       this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
     }
     return "";
@@ -624,11 +626,11 @@ public:
   }
   evar_sptr getLVar() { return lvar; }
   virtual std::string codegen(FILE *f)  override {
-    auto lreg = this->f->getReg(f, lvar, lineno);
-    auto rreg = this->f->getReg(f, rvar, getPrevLineno());
+    auto lreg = this->f->getRegFromMem(f, lvar);
+    auto rreg = this->f->getRegFromMem(f, rvar);
     fprintf(f, "%s = %s %s\n", lreg.c_str(), op.c_str(), rreg.c_str());
 
-    if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+    if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
       this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
     }
     return "";
@@ -658,13 +660,13 @@ public:
       return 0;
   }
   virtual std::string codegen(FILE *f)  override {
-    auto lreg = this->f->getReg(f, lvar, lineno);
-    auto rreg = this->f->getReg(f, rvar, getPrevLineno());
-    auto offset_reg = this->f->getReg(f, offset, getPrevLineno());
+    auto lreg = this->f->getRegFromMem(f, lvar);
+    auto rreg = this->f->getRegFromMem(f, rvar);
+    auto offset_reg = this->f->getRegFromMem(f, offset, 1);
 
     fprintf(f, "%s = %s + %s\n", lreg.c_str(), rreg.c_str(), offset_reg.c_str());
     fprintf(f, "%s = %s [0]\n", lreg.c_str(), lreg.c_str());
-    if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+    if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
       this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
     }
     return "";
@@ -720,8 +722,8 @@ public:
   }
   std::string getLabel() { return label; }
   virtual std::string codegen(FILE *f)  override {
-    auto reg1 = this->f->getReg(f, rvar1, getPrevLineno());
-    auto reg2 = this->f->getReg(f, rvar2, getPrevLineno());
+    auto reg1 = this->f->getRegFromMem(f, rvar1);
+    auto reg2 = this->f->getRegFromMem(f, rvar2, 1);
     fprintf(f, "if %s %s %s goto %s\n", reg1.c_str(), lop.c_str()
                                       , reg2.c_str(), label.c_str());
     return "";

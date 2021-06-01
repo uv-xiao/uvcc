@@ -5,6 +5,7 @@
 #include <iostream>
 
 int DEBUG_LEVEL = 0;
+
 void testSplit() {
   std::string str("if T0 <= 10 goto l0");
   std::cerr << str << std::endl;

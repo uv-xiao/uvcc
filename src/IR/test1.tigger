@@ -1,0 +1,93 @@
+v0 = malloc 40
+  // line: 2 -> f_main [0]
+f_main [0] [32]
+  // line: 3 -> var 8 T1
+  // line: 4 -> var T2
+  // line: 5 -> var t1
+  // line: 6 -> var t2
+  // line: 7 -> t1 = 0
+load 30 t0
+t0 = 0
+store t0 30
+  // line: 8 -> T1[t1] = 1
+loadaddr 27 t1
+t2 = 1
+load 30 t3
+loadaddr 27 t6
+t6 = t6 + t3
+t6 [0] = t2
+  // line: 9 -> t1 = 4
+load 30 t4
+t4 = 4
+store t4 30
+  // line: 10 -> T1[t1] = 2
+loadaddr 27 t5
+t0 = 2
+load 30 t1
+loadaddr 27 t6
+t6 = t6 + t1
+t6 [0] = t0
+  // line: 11 -> t1 = 0
+load 30 t2
+t2 = 0
+store t2 30
+  // line: 12 -> T2 = T1[t1]
+load 29 t3
+loadaddr 27 t4
+load 30 t5
+t3 = t4 + t5
+t3 = t3 [0]
+store t3 29
+  // line: 13 -> t1 = 4
+load 30 t0
+t0 = 4
+store t0 30
+  // line: 14 -> t2 = T1[t1]
+load 31 t1
+loadaddr 27 t2
+load 30 t3
+t1 = t2 + t3
+t1 = t1 [0]
+store t1 31
+  // line: 15 -> T2 = T2 + t2
+load 29 t4
+load 29 t5
+load 31 t0
+t4 = t5 + t0
+store t4 29
+  // line: 16 -> param T2
+store a0 18
+load 29 t1
+a0 = t1
+  // line: 17 -> call f_putint
+call f_putint
+  // line: 18 -> t1 = 4
+load 30 t2
+t2 = 4
+store t2 30
+  // line: 19 -> T0[t1] = T2
+loadaddr v0 t3
+load 29 t4
+load 30 t5
+    // store global 
+loadaddr v0 t6
+t6 = t6 + t5
+t6 [0] = t4
+  // line: 20 -> t2 = T0[t1]
+load 31 t0
+loadaddr v0 t1
+load 30 t2
+t0 = t1 + t2
+t0 = t0 [0]
+store t0 31
+  // line: 21 -> param t2
+store a0 18
+load 31 t3
+a0 = t3
+  // line: 22 -> call f_putint
+call f_putint
+  // line: 23 -> return 0
+a0 = 0
+return
+  // line: 24 -> end f_main
+end f_main

@@ -56,16 +56,16 @@ EAssign::EAssign(const stringvec &vec, int lineno, f_sptr f)
 }
 
 std::string EAssign::codegen(FILE *f)  {
-  auto lreg = this->f->getReg(f, lvar, lineno);
+  auto lreg = this->f->getRegFromMem(f, lvar);
   std::string rreg;
   if (ISA(rvar.get(), obj::Imm)) {
     rreg = rvar->getName();
   } else {
-    rreg = this->f->getReg(f, rvar, getPrevLineno());
+    rreg = this->f->getRegFromMem(f, rvar);
   }
 
   fprintf(f, "%s = %s\n", lreg.c_str(), rreg.c_str());
-  if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+  if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
     this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
   }
   return "";
@@ -124,21 +124,21 @@ EBinaryExpr::EBinaryExpr(stringvec &vec, int lineno, f_sptr f)
   }
 }
 std::string EBinaryExpr::codegen(FILE *f)  {
-  auto lreg = this->f->getReg(f, lvar, lineno);
+  auto lreg = this->f->getRegFromMem(f, lvar);
   std::string r1, r2;
   if (ISA(rvar1.get(), obj::Imm))
     r1 = std::to_string(std::dynamic_pointer_cast<obj::Imm>(rvar1)->getValue());
   else
-    r1 = this->f->getReg(f, rvar1, getPrevLineno());
+    r1 = this->f->getRegFromMem(f, rvar1);
   if (ISA(rvar2.get(), obj::Imm))
     r2 = std::to_string(std::dynamic_pointer_cast<obj::Imm>(rvar2)->getValue());
   else
-    r2 = this->f->getReg(f, rvar2, getPrevLineno());
+    r2 = this->f->getRegFromMem(f, rvar2);
   
   fprintf(f, "%s = %s %s %s\n", lreg.c_str(), r1.c_str(), 
                                 op.c_str(), r2.c_str());
 
-  if (lreg[0] == 't' || obj::globalVars.isGlobalVar(lvar)) {
+  if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
     this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
   }
   return "";
@@ -177,7 +177,7 @@ void Function::setupBasic() {
     }
   }
   stackFrame.expand(size);
-  stackFrame.expand(obj::globalVars.getGlobalVarCount() * 4);
+  // stackFrame.expand(obj::globalVars.getGlobalVarCount() * 4);
 
   for (auto inst : instTable) {
     if (ISA(inst.second.get(), EDefVar)) {
@@ -195,9 +195,9 @@ void Function::setupBasic() {
     }
   }
 
-  for (auto var : obj::globalVars.getAllEVars()) {
-    stackFrame.allocateVar(var);
-  }
+  // for (auto var : obj::globalVars.getAllEVars()) {
+  //   stackFrame.allocateVar(var);
+  // }
 }
 
 void Function::setupRegs(obj::LiveTable &liveTable) {
@@ -288,10 +288,14 @@ void Function::codegen(FILE *f) {
 
   for (auto inst : instTable) {
     // debug info
-    fprintf(f, "  // line: %s -> %s \n", 
-        std::to_string(inst.first).c_str(), inst.second->getCode().c_str());
+    std::string code = inst.second->getCode();
+    if (code.back() == '\n') code.pop_back();
+    fprintf(f, "  // line: %s -> %s\n", 
+        std::to_string(inst.first).c_str(), 
+        code.c_str());
     inst.second->codegen(f);
 
+    /*
     auto allocated = allocateResult[inst.first];
     for (auto &var : allocated) {
       if (liveVars.find(*(var.var.get())) == liveVars.end()) {
@@ -308,9 +312,54 @@ void Function::codegen(FILE *f) {
         backToMemory(f, var, varinfo.regID);
         fprintf(f, "    // spill var \n");
       });
+    */
   }
 }
 
+std::string Function::getRegFromMem(FILE *f, rvar_sptr rvar, bool mustReg) {
+  static int curReg = 0;
+  static std::string candidates[6] = {"t0", "t1", "t2", "t3", "t4", "t5"};
+
+  if (ISA(rvar.get(), obj::Imm)) {
+    std::shared_ptr<obj::Imm> imm = std::dynamic_pointer_cast<obj::Imm>(rvar);
+    if (mustReg) {
+      std::string reg = candidates[curReg ++];
+      curReg %= 6;
+      // fprintf(f, "Fxxk!\n");
+      fprintf(f, "%s = %d\n", reg.c_str(), imm->getValue());
+      return reg;
+    }
+    else
+      return std::to_string(imm->getValue());
+  }
+  else {
+    std::string reg;
+    evar_sptr evar = std::dynamic_pointer_cast<obj::EVar>(rvar);
+    reg = candidates[curReg ++]; 
+    curReg %= 6;
+  
+    if (evar->isArray()) {
+      // Here loading address
+      if (obj::globalVars.isGlobalVar(evar)) {
+        obj::globalVars.codegen_loadVar(f, evar, reg);
+      }
+      else {
+        auto offset = stackFrame.addressOfVar(evar);
+        stackFrame.codegen_lea(f, offset, tmpPool.getRegID(reg));
+      }
+    }
+    else {
+      if (obj::globalVars.isGlobalVar(evar))
+        obj::globalVars.codegen_loadVar(f, evar, reg);
+      else {
+        auto offset = stackFrame.addressOfVar(evar);
+        stackFrame.codegen_spillout(f, offset, tmpPool.getRegID(reg));
+      }
+    }
+
+    return reg;
+  }
+}
 std::string Function::getReg(FILE *f, rvar_sptr rvar, int lineno) {
   static int constRegUsed = 0;
   static std::string constRegs[2] = {"s11", "t5"};
@@ -380,11 +429,12 @@ void Function::endCall(FILE *f) {
     if (rid > 19 && rid < 27) 
       _restoreReg(f, rid);
   }
+  tempParamCount = 0;
 }
 
 void Function::backToStack(FILE *f, evar_sptr lvar, int reg, int offreg) {
   auto offset = stackFrame.addressOfVar(lvar);
-  stackFrame.codegen_spillin(f, offset, reg);
+  stackFrame.codegen_spillin(f, offset, reg, offreg);
 }
 
 void Function::backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg) {
@@ -594,6 +644,7 @@ void EInstManager::codegen(FILE *f) {
     //   succ(entry.second->getInsts(), inst.first);
 
     entry.second->setupBasic();
+    /*
     bool opted = false;
     obj::LiveTable liveness;
     do {
@@ -613,6 +664,7 @@ void EInstManager::codegen(FILE *f) {
         inst.second->dbg_print();
       }
     }
+    */
 
     entry.second->codegen(f);
   }
