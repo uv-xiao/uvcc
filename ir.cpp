@@ -325,6 +325,7 @@ std::string Function::getRegFromMem(FILE *f, rvar_sptr rvar, bool mustReg) {
     if (mustReg) {
       std::string reg = candidates[curReg ++];
       curReg %= 6;
+      // fprintf(f, "Fxxk!\n");
       fprintf(f, "%s = %d\n", reg.c_str(), imm->getValue());
       return reg;
     }
@@ -337,12 +338,25 @@ std::string Function::getRegFromMem(FILE *f, rvar_sptr rvar, bool mustReg) {
     reg = candidates[curReg ++]; 
     curReg %= 6;
   
-    if (obj::globalVars.isGlobalVar(evar))
-      obj::globalVars.codegen_loadVar(f, evar, reg);
-    else {
-      auto offset = stackFrame.addressOfVar(evar);
-      stackFrame.codegen_spillout(f, offset, tmpPool.getRegID(reg));
+    if (evar->isArray()) {
+      // Here loading address
+      if (obj::globalVars.isGlobalVar(evar)) {
+        obj::globalVars.codegen_loadVar(f, evar, reg);
+      }
+      else {
+        auto offset = stackFrame.addressOfVar(evar);
+        stackFrame.codegen_lea(f, offset, tmpPool.getRegID(reg));
+      }
     }
+    else {
+      if (obj::globalVars.isGlobalVar(evar))
+        obj::globalVars.codegen_loadVar(f, evar, reg);
+      else {
+        auto offset = stackFrame.addressOfVar(evar);
+        stackFrame.codegen_spillout(f, offset, tmpPool.getRegID(reg));
+      }
+    }
+
     return reg;
   }
 }
@@ -420,7 +434,7 @@ void Function::endCall(FILE *f) {
 
 void Function::backToStack(FILE *f, evar_sptr lvar, int reg, int offreg) {
   auto offset = stackFrame.addressOfVar(lvar);
-  stackFrame.codegen_spillin(f, offset, reg);
+  stackFrame.codegen_spillin(f, offset, reg, offreg);
 }
 
 void Function::backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg) {

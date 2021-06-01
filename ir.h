@@ -545,9 +545,10 @@ public:
       return 0;
   }
   virtual std::string codegen(FILE *f)  override {
+    // dbg_print();
     auto lreg = this->f->getRegFromMem(f, lvar);
-    auto rreg = this->f->getRegFromMem(f, rvar);
-    auto offset_reg = this->f->getRegFromMem(f, offset);
+    auto rreg = this->f->getRegFromMem(f, rvar, 1);
+    auto offset_reg = this->f->getRegFromMem(f, offset, 1);
 
     this->f->backToMemory(f, lvar, obj::globalRegs_r[rreg], 
                           obj::globalRegs_r[offset_reg]);
@@ -661,7 +662,7 @@ public:
   virtual std::string codegen(FILE *f)  override {
     auto lreg = this->f->getRegFromMem(f, lvar);
     auto rreg = this->f->getRegFromMem(f, rvar);
-    auto offset_reg = this->f->getRegFromMem(f, offset);
+    auto offset_reg = this->f->getRegFromMem(f, offset, 1);
 
     fprintf(f, "%s = %s + %s\n", lreg.c_str(), rreg.c_str(), offset_reg.c_str());
     fprintf(f, "%s = %s [0]\n", lreg.c_str(), lreg.c_str());
