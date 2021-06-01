@@ -127,14 +127,8 @@ EBinaryExpr::EBinaryExpr(stringvec &vec, int lineno, f_sptr f)
 std::string EBinaryExpr::codegen(FILE *f)  {
   auto lreg = this->f->getRegFromMem(f, lvar);
   std::string r1, r2;
-  if (ISA(rvar1.get(), obj::Imm))
-    r1 = std::to_string(std::dynamic_pointer_cast<obj::Imm>(rvar1)->getValue());
-  else
-    r1 = this->f->getRegFromMem(f, rvar1);
-  if (ISA(rvar2.get(), obj::Imm))
-    r2 = std::to_string(std::dynamic_pointer_cast<obj::Imm>(rvar2)->getValue());
-  else
-    r2 = this->f->getRegFromMem(f, rvar2);
+  r1 = this->f->getRegFromMem(f, rvar1);
+  r2 = this->f->getRegFromMem(f, rvar2);
   
   fprintf(f, "%s = %s %s %s\n", lreg.c_str(), r1.c_str(), 
                                 op.c_str(), r2.c_str());
@@ -436,13 +430,10 @@ void Function::endFunc(FILE *f) {
 }
 */
 
+void Function::prepareCall(FILE *f) {
+  tempParamCount = 0;
+}
 void Function::endCall(FILE *f) {
-  /*
-  for (auto rid : usedRegs) {
-    if (rid > 19 && rid < 27) 
-      _restoreReg(f, rid);
-  }
-  */
   tempParamCount = 0;
 }
 
@@ -458,9 +449,17 @@ void Function::backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg) {
 void Function::backToMemory(FILE *f, evar_sptr var, int reg, int offreg) {
   if (obj::globalVars.isGlobalVar(var)) {
     backToGlobal(f, var, reg, offreg);
-  } else {
+  }
+  else {
     backToStack(f, var, reg, offreg);
   }
+}
+
+void Function::backToAddress(FILE *f, evar_sptr addr, int reg, int offreg) {
+  fprintf(f, "load %s t6\nt6 = t6 + %s\nt6 [0] = %s\n",
+            std::to_string(stackFrame.addressOfVar(addr)).c_str(),
+            obj::globalRegs[offreg].c_str(),
+            obj::globalRegs[reg].c_str());
 }
 
 /*
