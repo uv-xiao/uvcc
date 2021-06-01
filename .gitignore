@@ -14,3 +14,7 @@ src/IR/utils.h.gch
 src/IR/utils.o
 src/IR/vars.h.gch
 src/IR/vars.o
+src/IR/*.eeyore
+src/IR/*.tigger
+src/IR/*.out
+src/IR/*.in

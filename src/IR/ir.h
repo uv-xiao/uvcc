@@ -74,14 +74,14 @@ protected:
   int lineno;
   std::string code;
   f_sptr f;
-  std::set<obj::EVar> def;
-  std::set<obj::EVar> use;
+  // std::set<obj::EVar> def;
+  // std::set<obj::EVar> use;
 
 public:
   EInst(int lineno, f_sptr func) : lineno(lineno), f(func) {}
   virtual int getLine() { return lineno; }
-  virtual std::set<obj::EVar> &getDef() { return def; }
-  virtual std::set<obj::EVar> &getUse() { return use; }
+  // virtual std::set<obj::EVar> &getDef() { return def; }
+  // virtual std::set<obj::EVar> &getUse() { return use; }
   
   virtual int getPrevLineno() = 0;
   virtual i_sptr makeThis() = 0;
@@ -142,8 +142,8 @@ public:
   std::string getReg(FILE *f, std::shared_ptr<obj::RVar> rvar, int lineno);
   std::string prepareParam(FILE *f);
   void startFunc(FILE *f);
-  void endFunc(FILE *f);
-  void prepareCall(FILE *f);
+  // void endFunc(FILE *f);
+  void prepareCall(FILE *f) { tempParamCount = 0; }
   void endCall(FILE *f);
   void backToStack(FILE *f, evar_sptr lvar, int reg, int offreg = 0);
   void backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg = 0);
@@ -278,7 +278,7 @@ public:
       return 0;
   }
   virtual std::string codegen(FILE *f)  override {
-    this->f->endFunc(f);
+    // this->f->endFunc(f);
     fprintf(f, "return\n");
     return "";
   }
@@ -319,7 +319,7 @@ public:
   EDefVar(stringvec &vec, int lineno, f_sptr f) 
     :EInst(lineno, f) {
     var = obj::EVar::buildEVar(vec[1]);
-    def.insert(*var);
+    // def.insert(*var);
   }
   virtual i_sptr makeThis() { return std::make_shared<EDefVar>(*this);}
   virtual int getPrevLineno() {
@@ -384,7 +384,7 @@ public:
   virtual std::string codegen(FILE *f)  override {
     auto reg = this->f->getRegFromMem(f, var);
     fprintf(f, "a0 = %s\n", reg.c_str());
-    this->f->endFunc(f);
+    // this->f->endFunc(f);
     fprintf(f, "return\n");
     return "";
   }
@@ -569,7 +569,7 @@ public:
   ECall(stringvec &vec, int lineno, f_sptr f)
     : EInst(lineno, f), name(vec[3]) {
       lvar = obj::EVar::buildEVar(vec[0]);
-      def.insert(*lvar);
+      // def.insert(*lvar);
     }
   virtual i_sptr makeThis() { return std::make_shared<ECall>(*this);}
   virtual int getPrevLineno() {
@@ -597,9 +597,10 @@ public:
     // auto offset = this->f->getStack().addressOfReg(19);
     // this->f->getStack().codegen_spillout(f, offset, 19);
     // fflush(f);
-    if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
-      this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    }
+    this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
+    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // }
     return "";
   }
   virtual void dbg_print() const override {
@@ -629,10 +630,10 @@ public:
     auto lreg = this->f->getRegFromMem(f, lvar);
     auto rreg = this->f->getRegFromMem(f, rvar);
     fprintf(f, "%s = %s %s\n", lreg.c_str(), op.c_str(), rreg.c_str());
-
-    if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
-      this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    }
+    this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
+    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // }
     return "";
   }
   virtual void dbg_print() const override {
@@ -666,9 +667,10 @@ public:
 
     fprintf(f, "%s = %s + %s\n", lreg.c_str(), rreg.c_str(), offset_reg.c_str());
     fprintf(f, "%s = %s [0]\n", lreg.c_str(), lreg.c_str());
-    if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
-      this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    }
+    this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
+    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
+    // }
     return "";
   }
   virtual void dbg_print() const override {
