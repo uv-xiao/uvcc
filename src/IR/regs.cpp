@@ -137,7 +137,7 @@ RegAllocator::Alloc_t RegAllocator::allocate() {
     else {
       for (auto interval : intervals) {
         if (interval.start == time) {
-          pool.dbg_print();
+          // pool.dbg_print();
           ExpireOldInterval(interval);
           if (pool.getFreeNum() == 0)
             SpillAtInterval(interval);

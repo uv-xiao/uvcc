@@ -1,3 +1,16 @@
 
 src/IR/minivm
 src/IR/output.tigger
+src/IR/entry.h.gch
+src/IR/entry.o
+src/IR/ir.h.gch
+src/IR/ir.o
+src/IR/regs.h.gch
+src/IR/regs.o
+src/IR/stack.h.gch
+src/IR/stack.o
+src/IR/tigger
+src/IR/utils.h.gch
+src/IR/utils.o
+src/IR/vars.h.gch
+src/IR/vars.o

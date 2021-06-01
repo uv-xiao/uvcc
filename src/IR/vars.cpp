@@ -59,6 +59,7 @@ void GlobalVarManager::codegen_loadVar(FILE *f, evar_sptr var,
     fprintf(f, "loadaddr ");
   else
     fprintf(f, "load ");
+  // fprintf(f, "loadaddr ");
   fprintf(f, "%s %s\n", tvar->getName().c_str(), reg.c_str());
 }
 
