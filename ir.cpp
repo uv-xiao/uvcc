@@ -249,14 +249,20 @@ const std::string EInstManager::GLOBAL_SCOPE_NAME = "f__init";
 void EInstManager::addInst(const std::string &line) {
 #define ADDI(type) _addInst(std::make_shared<type>(vec, curLine, getFunc(curFunc)))
 
+  std::cerr << line << " -> ";
   input.push_back(line);
   stringvec vec = utils::split(line, ' ');
+  for (auto str : vec)
+    std::cerr << str << " ";
+  std::cerr << std::endl;
+
+  if (vec.size() == 0) return;
   switch(vec.size()) {
     case 0:
       break;
     case 1:
       if(vec[0] == "return")
-        ADDI(EReturn);
+        ADDI(ERetVoid);
       else if (vec[0].back() == ':') {
         labelTable[vec[0]] = curLine;
         ADDI(ELable);
@@ -326,6 +332,7 @@ void EInstManager::addInst(const std::string &line) {
 
     default:
 ERROR:
+    std::cerr << "syntax error!" << std::endl;
     throw std::runtime_error("Invalid Grammar at line: " + 
                             std::to_string(curLine) + ": " +
                             line + "| Len: "+std::to_string(vec.size()));
