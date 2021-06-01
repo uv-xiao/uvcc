@@ -74,16 +74,11 @@ protected:
   int lineno;
   std::string code;
   f_sptr f;
-  // std::set<obj::EVar> def;
-  // std::set<obj::EVar> use;
 
 public:
   EInst(int lineno, f_sptr func) : lineno(lineno), f(func) {}
   virtual int getLine() { return lineno; }
-  // virtual std::set<obj::EVar> &getDef() { return def; }
-  // virtual std::set<obj::EVar> &getUse() { return use; }
   
-  virtual int getPrevLineno() = 0;
   virtual i_sptr makeThis() = 0;
   virtual void setCode(const std::string &code) { this->code = code; }
   virtual std::string getCode() { return code; }
@@ -102,10 +97,6 @@ private:
   mgr_sptr instMgr;
   obj::RegPool tmpPool;
   obj::StackFrame stackFrame;
-
-  std::unique_ptr<obj::RegAllocator> regAllocator;
-  obj::RegAllocator::Alloc_t allocateResult;
-  std::set<obj::RegID_t> usedRegs;
 
   int tempParamCount = 0;
   
@@ -132,7 +123,6 @@ public:
     return instTable;
   }
   obj::StackFrame &getStack() { return stackFrame; }
-  i_sptr getPrevInst(i_sptr inst);
   bool optimize(obj::LiveTable &liveTable);
 
   
@@ -214,11 +204,6 @@ public:
   void codegen(FILE *f);
 };
 
-obj::LiveTable LivenessAnalysis(EInstManager &mgr, const std::string &func);
-
-
-
-
 /* 
  *
 class ELable;
@@ -246,14 +231,7 @@ public:
   ELable(stringvec &vec, int lineno, f_sptr f)
       :EInst(lineno, f), name(vec[0]) {}
   virtual i_sptr makeThis() { return std::make_shared<ELable>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   std::string getName() { return name; }
   virtual std::string codegen(FILE *f)  override {
     fprintf(f, "%s\n", name.c_str());
@@ -270,16 +248,7 @@ public:
   ERetVoid(stringvec &, int lineno, f_sptr func) :
       EInst(lineno, func) {}
   virtual i_sptr makeThis() { return std::make_shared<ERetVoid>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
   virtual std::string codegen(FILE *f)  override {
-    // this->f->endFunc(f);
     fprintf(f, "return\n");
     return "";
   }
@@ -295,14 +264,6 @@ public:
   EJump(stringvec &vec, int lineno, f_sptr f) 
     : EInst(lineno, f), targetLabel(vec[1]) {}
   virtual i_sptr makeThis() { return std::make_shared<EJump>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
   std::string getLabel() { return targetLabel; }
   virtual std::string codegen(FILE *f)  override {
     fprintf(f, "goto %s\n", targetLabel.c_str());
@@ -320,17 +281,9 @@ public:
   EDefVar(stringvec &vec, int lineno, f_sptr f) 
     :EInst(lineno, f) {
     var = obj::EVar::buildEVar(vec[1]);
-    // def.insert(*var);
   }
   virtual i_sptr makeThis() { return std::make_shared<EDefVar>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     return "";
   }
@@ -347,14 +300,7 @@ private:
 public:
   EParam(stringvec &vec, int lineno, f_sptr f); // TODO: implemented
   virtual i_sptr makeThis() { return std::make_shared<EParam>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     auto preparation = this->f->prepareParam(f);
     auto result = this->f->getRegFromMem(f, var);
@@ -374,14 +320,7 @@ private:
 public:
   EReturn(stringvec &vec, int lineno, f_sptr f); // TODO: to implement
   virtual i_sptr makeThis() { return std::make_shared<EReturn>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     auto reg = this->f->getRegFromMem(f, var);
     fprintf(f, "a0 = %s\n", reg.c_str());
@@ -403,14 +342,6 @@ public:
   EFunc(const stringvec &vec, int lineno, f_sptr f) 
     : EInst(lineno, f), name(vec[0]), paramInfo(vec[1]) {}
   virtual i_sptr makeThis() { return std::make_shared<EFunc>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
   std::string getParam() { return paramInfo; }
   virtual std::string codegen(FILE *f)  override {
     auto size = this->f->getStack().size();
@@ -430,21 +361,11 @@ public:
   ECallVoid(stringvec &vec, int lineno, f_sptr f)
     : EInst(lineno, f), name(vec[1]) {}
   virtual i_sptr makeThis() { return std::make_shared<ECallVoid>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     this->f->prepareCall(f);
     fprintf(f, "call %s\n", name.c_str());
     this->f->endCall(f);
-
-    // auto offset = this->f->getStack().addressOfReg(19);
-    // this->f->getStack().codegen_spillout(f, offset, 19);
     return "";
   }
   virtual void dbg_print() const override {
@@ -459,14 +380,7 @@ public:
   EEndFunc(stringvec &vec, int lineno, f_sptr f)
     :EInst(lineno, f), name(vec[1]) {}
   virtual i_sptr makeThis() { return std::make_shared<EEndFunc>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     fprintf(f, "end %s\n", name.c_str());
     return "";
@@ -486,14 +400,7 @@ public:
   evar_sptr getVar() { return var; }
   int getLength() { return len; }
   virtual i_sptr makeThis() { return std::make_shared<EDefArr>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     // TODO
     return "";
@@ -513,14 +420,7 @@ public:
   EAssign(const stringvec &vec, int lineno, f_sptr f); // TODO : to implement
   evar_sptr getLVar() { return lvar; }
   virtual i_sptr makeThis() { return std::make_shared<EAssign>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f) override; // TODO
   virtual void dbg_print() const override {
     std::cerr << "EAssign : " << lvar->getName() << " = "  <<rvar->getName()
@@ -537,14 +437,7 @@ private:
 public:
   EStoreArr(stringvec &vec, int lineno, f_sptr f); // TODO
   virtual i_sptr makeThis() { return std::make_shared<EStoreArr>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     // dbg_print();
     auto lreg = this->f->getRegFromMem(f, lvar);
@@ -577,14 +470,7 @@ public:
       // def.insert(*lvar);
     }
   virtual i_sptr makeThis() { return std::make_shared<ECall>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   evar_sptr getLVar() { return lvar; }
   i_sptr toCallVoid() {
     stringvec vec{"call", name};
@@ -598,14 +484,7 @@ public:
     auto lreg = this->f->getRegFromMem(f, lvar);
     this->f->endCall(f);
     fprintf(f, "%s = a0\n", lreg.c_str());
-    // fflush(f);
-    // auto offset = this->f->getStack().addressOfReg(19);
-    // this->f->getStack().codegen_spillout(f, offset, 19);
-    // fflush(f);
     this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
-    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // }
     return "";
   }
   virtual void dbg_print() const override {
@@ -622,24 +501,14 @@ private:
 public:
   EUnaryExpr(stringvec &vec, int lineno, f_sptr f); 
   virtual i_sptr makeThis() { return std::make_shared<EUnaryExpr>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   evar_sptr getLVar() { return lvar; }
-  
+
   virtual std::string codegen(FILE *f)  override {
     auto lreg = this->f->getRegFromMem(f, lvar);
     auto rreg = this->f->getRegFromMem(f, rvar);
     fprintf(f, "%s = %s %s\n", lreg.c_str(), op.c_str(), rreg.c_str());
     this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // if (lreg[0] == 't'|| lreg[0] == 'T'  || obj::globalVars.isGlobalVar(lvar)) {
-    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // }
     return "";
   }
   virtual void dbg_print() const override {
@@ -658,14 +527,7 @@ public:
   ELoadArr(stringvec &vec, int lineno, f_sptr f); 
   evar_sptr getLVar() { return lvar; }
   virtual i_sptr makeThis() { return std::make_shared<ELoadArr>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   virtual std::string codegen(FILE *f)  override {
     auto lreg = this->f->getRegFromMem(f, lvar);
     auto rreg = this->f->getRegFromMem(f, rvar);
@@ -674,9 +536,6 @@ public:
     fprintf(f, "%s = %s + %s\n", lreg.c_str(), rreg.c_str(), offset_reg.c_str());
     fprintf(f, "%s = %s [0]\n", lreg.c_str(), lreg.c_str());
     this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // if (lreg[0] == 't' || lreg[0] == 'T' || obj::globalVars.isGlobalVar(lvar)) {
-    //   this->f->backToMemory(f, lvar, obj::globalRegs_r[lreg]);
-    // }
     return "";
   }
   virtual void dbg_print() const override {
@@ -694,14 +553,7 @@ private:
 public:
   EBinaryExpr(stringvec &vec, int lineno, f_sptr f);  
   virtual i_sptr makeThis() { return std::make_shared<EBinaryExpr>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   evar_sptr getLVar() { return lvar; }
   virtual std::string codegen(FILE *f)  override;
   virtual void dbg_print() const override {
@@ -720,14 +572,7 @@ private:
 public:
   ECJump(stringvec &vec, int lineno, f_sptr f);
   virtual i_sptr makeThis() { return std::make_shared<ECJump>(*this);}
-  virtual int getPrevLineno() {
-    i_sptr current = makeThis();
-    i_sptr prev = f->getPrevInst(current);
-    if (prev) {
-      return prev->getLine();
-    } else
-      return 0;
-  }
+
   std::string getLabel() { return label; }
   virtual std::string codegen(FILE *f)  override {
     auto reg1 = this->f->getRegFromMem(f, rvar1);
