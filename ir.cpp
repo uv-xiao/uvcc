@@ -295,6 +295,7 @@ void Function::codegen(FILE *f) {
     fprintf(f, "  // line: %s -> %s\n", 
         std::to_string(inst.first).c_str(), 
         code.c_str());
+    std::cerr << "line: " << inst.first <<  " -> " <<  code << std::endl;
     inst.second->codegen(f);
 
     /*
@@ -639,9 +640,9 @@ void EInstManager::codegen(FILE *f) {
     auto inst = entry.second;
     if (ISA(inst.get(), EDefVar)) {
       auto defvar = std::dynamic_pointer_cast<EDefVar>(inst);
-      if (defvar->getVar()->getName()[0] == 'T') {
-        obj::globalVars.allocateGlobalVar(f, defvar->getVar(), 0);
-      }
+      // if (defvar->getVar()->getName()[0] == 'T') {
+      obj::globalVars.allocateGlobalVar(f, defvar->getVar(), 0);
+      // }
     }
     else if (ISA(inst.get(), EDefArr)) {
       auto defarr = std::dynamic_pointer_cast<EDefArr>(inst);
