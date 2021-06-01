@@ -143,8 +143,9 @@ public:
   std::string prepareParam(FILE *f);
   void startFunc(FILE *f);
   // void endFunc(FILE *f);
-  void prepareCall(FILE *f) { tempParamCount = 0; }
+  void prepareCall(FILE *f);
   void endCall(FILE *f);
+  void backToAddress(FILE *f, evar_sptr lvar, int reg, int offreg = 0);
   void backToStack(FILE *f, evar_sptr lvar, int reg, int offreg = 0);
   void backToGlobal(FILE *f, evar_sptr gvar, int reg, int offreg = 0);
   void backToMemory(FILE *f, evar_sptr var, int reg, int offreg = 0);
@@ -550,8 +551,12 @@ public:
     auto rreg = this->f->getRegFromMem(f, rvar, 1);
     auto offset_reg = this->f->getRegFromMem(f, offset, 1);
 
-    this->f->backToMemory(f, lvar, obj::globalRegs_r[rreg], 
-                          obj::globalRegs_r[offset_reg]);
+    if (lvar->isArray())
+      this->f->backToMemory(f, lvar, obj::globalRegs_r[rreg], 
+                            obj::globalRegs_r[offset_reg]);
+    else
+      this->f->backToAddress(f, lvar, obj::globalRegs_r[rreg], 
+                            obj::globalRegs_r[offset_reg]);
     return "";
   }
 
@@ -626,6 +631,7 @@ public:
       return 0;
   }
   evar_sptr getLVar() { return lvar; }
+  
   virtual std::string codegen(FILE *f)  override {
     auto lreg = this->f->getRegFromMem(f, lvar);
     auto rreg = this->f->getRegFromMem(f, rvar);

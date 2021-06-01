@@ -18,3 +18,9 @@ src/IR/*.eeyore
 src/IR/*.tigger
 src/IR/*.out
 src/IR/*.in
+src/IR/99_register_realloc.sy
+src/frontend/parser.tab.cpp
+src/frontend/parser.tab.hpp
+src/frontend/lex.yy.c
+src/frontend/frontend
+src/frontend/tokens.cpp
