@@ -287,14 +287,27 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       break;
     }
     case TType::TStore : {          /* store r0 4 */
-      auto snum = std::to_string(std::stoi(line[2]) * 4);
-      Emit(f, "\tsw\t" + line[1] + ", " + snum + "(sp)");
+      int num = std::stoi(line[2]) * 4;
+      std::string strnum;
+      if (num > 2047 || num < -2048) {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+        strnum = emptyReg;
+      }
+      else strnum = std::to_string(num);
+      Emit(f, "\tsw\t" + line[1] + ", " + strnum + "(sp)");
       break;
     }
     case TType::TLoad : {           /* load int reg */
-      if(_isNum(line[1]))
-        Emit(f, "\tlw\t" + line[2] + ", " + 
-             std::to_string(4 * std::stoi(line[1])) + "(sp)");
+      if(_isNum(line[1])) {
+        int num = 4 * std::stoi(line[1]);
+        std::string strnum;
+        if (num > 2047 || num < -2048) {
+          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+          strnum = emptyReg;
+        }
+        else strnum = std::to_string(num);
+        Emit(f, "\tlw\t" + line[2] + ", " + strnum + "(sp)");
+      }
       else {
         Emit(f, "\tlui\t" + line[2] + ", \%hi(" + line[1] + ")");
         Emit(f, "\tlw\t" + line[2] + 
@@ -303,9 +316,16 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       break;
     }
     case TType::TLoadAddr : {       /* loadaddr int/gvar reg */
-      if(_isNum(line[1]))
-        Emit(f, "\tadd\t" + line[2] + ", sp, " + 
-              std::to_string(4 * std::stoi(line[1])));
+      if(_isNum(line[1])) { 
+        int num = 4 * std::stoi(line[1]);
+        std::string strnum;
+        if (num > 2047 || num < -2048) {
+          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+          strnum = emptyReg;
+        }
+        else strnum = std::to_string(num);
+        Emit(f, "\tadd\t" + line[2] + ", sp, " + strnum);
+      }
       else 
         Emit(f, "\tla\t" + line[2] + ", " + line[1]);
       break;
