@@ -274,12 +274,24 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
     }
     case TType::TAssignToArr : {    /* reg [1] = reg */
       int snum = std::stoi(line[1].substr(0, line[1].length() - 1).substr(1));
-      Emit(f, "\tsw\t" + line[3] + ", " + _strNum(f, snum) + "(" + line[0] + ")");
+      if (snum < 2048)
+        Emit(f, "\tsw\t" + line[3] + ", " + std::to_string(snum) + "(" + line[0] + ")");
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(snum));
+        Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", " + line[0]);
+        Emit(f, "\tsw\t" + line[3] + ", " + "0(" + emptyReg + ")");
+      }
       break;
     }
     case TType::TAssignFromArr : {  /* reg = reg [2] */
       int snum = std::stoi(line[3].substr(0, line[3].length() - 1).substr(1));
-      Emit(f, "\tlw\t" + line[0] + ", " + _strNum(f, snum) + "(" + line[2] + ")");
+      if (snum < 2048)
+        Emit(f, "\tlw\t" + line[0] + ", " + std::to_string(snum) + "(" + line[2] + ")");
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(snum));
+        Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", " + line[2]);
+        Emit(f, "\tsw\t" + line[0] + ", " + "0(" + emptyReg + ")");
+      }
       break;
     }
     case TType::TCJump : {          /* if reg1 op reg2 goto l3 */
@@ -305,10 +317,16 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       Emit(f, "\tsw\t" + line[1] + ", " + _strNum(f, num) + "(sp)");
       break;
     }
-    case TType::TLoad : {           /* load int reg */
+    case TType::TLoad : {           /* load int/gvar reg */
       if(_isNum(line[1])) {
         int num = 4 * std::stoi(line[1]);
-        Emit(f, "\tlw\t" + line[2] + ", " + _strNum(f, num) + "(sp)");
+        if (num < 2048) 
+          Emit(f, "\tlw\t" + line[2] + ", " + std::to_string(num) + "(sp)");
+        else {
+          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+          Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", sp");
+          Emit(f, "\tlw\t" + line[2] + ", 0(" + emptyReg + ")");
+        }
       }
       else {
         Emit(f, "\tlui\t" + line[2] + ", \%hi(" + line[1] + ")");
@@ -320,18 +338,31 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
     case TType::TLoadAddr : {       /* loadaddr int/gvar reg */
       if(_isNum(line[1])) { 
         int num = 4 * std::stoi(line[1]);
-        Emit(f, "\tadd\t" + line[2] + ", sp, " + _strNum(f, num));
+        if (num < 2048)
+          Emit(f, "\taddi\t" + line[2] + ", sp, " + std::to_string(num));
+        else {
+          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+          Emit(f, "\tadd\t" + line[2] + ", sp, " + emptyReg);
+        }
       }
       else 
         Emit(f, "\tla\t" + line[2] + ", " + line[1]);
       break;
     }
     case TType::TReturn : {         /* return */
-      Emit(f, "\tlw\tra, " + _strNum(f, stackSize - 4) + "(sp)");
+      if (stackSize - 4 < 2048)
+        Emit(f, "\tlw\tra, " + std::to_string(stackSize - 4) + "(sp)");
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(stackSize - 4));
+        Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", sp");
+        Emit(f, "\tlw\tra, 0(" + emptyReg + ")");
+      }
+
       if (stackSize < 2048)
         Emit(f, "\taddi\tsp, sp, " + std::to_string(stackSize));
-      else
+      else {
         Emit(f, "\tadd\tsp, sp, " + _strNum(f, stackSize));
+      }
       Emit(f, "\tret");
       break;
     }
