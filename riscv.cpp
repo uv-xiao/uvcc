@@ -165,6 +165,16 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
   return TType::Empty;
 }
 
+std::string RISCVGen::_strNum(FILE *f, int num) {
+  std::string strnum;
+  if (num > 2047 || num < -2048) {
+    Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+    strnum = emptyReg;
+  }
+  else strnum = std::to_string(num);
+  return strnum;
+}
+
 void RISCVGen::_codegen(FILE *f, stringvec line) {
   if (DEBUG_FLAG) {
     std::cerr << "{" << std::endl;
@@ -186,8 +196,12 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       Emit(f, "\t.type\t" + fname + ", @function");
       Emit(f, fname + ":");
       stackSize = (size / 4 + 1) * 16;
-      Emit(f, "\tadd\tsp, sp, -" + std::to_string(stackSize));
-      Emit(f, "\tsw\tra, " +std::to_string(stackSize - 4) + "(sp)");  
+
+      if (stackSize < 2048)
+        Emit(f, "\taddi\tsp, sp, -" + _strNum(f, stackSize));
+      else
+        Emit(f, "\tadd\tsp, sp, -" + _strNum(f, stackSize));
+      Emit(f, "\tsw\tra, " + _strNum(f, stackSize - 4) + "(sp)");  
       break;
     }    
     case TType::TEndFunc : {        /* end f_name */
@@ -259,13 +273,13 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       break;
     }
     case TType::TAssignToArr : {    /* reg [1] = reg */
-      auto snum = line[1].substr(0, line[1].length() - 1).substr(1);
-      Emit(f, "\tsw\t" + line[3] + ", " + snum + "(" + line[0] + ")");
+      int snum = std::stoi(line[1].substr(0, line[1].length() - 1).substr(1));
+      Emit(f, "\tsw\t" + line[3] + ", " + _strNum(f, snum) + "(" + line[0] + ")");
       break;
     }
     case TType::TAssignFromArr : {  /* reg = reg [2] */
-      auto snum = line[3].substr(0, line[3].length() - 1).substr(1);
-      Emit(f, "\tlw\t" + line[0] + ", " + snum + "(" + line[2] + ")");
+      int snum = std::stoi(line[3].substr(0, line[3].length() - 1).substr(1));
+      Emit(f, "\tlw\t" + line[0] + ", " + _strNum(f, snum) + "(" + line[2] + ")");
       break;
     }
     case TType::TCJump : {          /* if reg1 op reg2 goto l3 */
@@ -288,25 +302,13 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
     }
     case TType::TStore : {          /* store r0 4 */
       int num = std::stoi(line[2]) * 4;
-      std::string strnum;
-      if (num > 2047 || num < -2048) {
-        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
-        strnum = emptyReg;
-      }
-      else strnum = std::to_string(num);
-      Emit(f, "\tsw\t" + line[1] + ", " + strnum + "(sp)");
+      Emit(f, "\tsw\t" + line[1] + ", " + _strNum(f, num) + "(sp)");
       break;
     }
     case TType::TLoad : {           /* load int reg */
       if(_isNum(line[1])) {
         int num = 4 * std::stoi(line[1]);
-        std::string strnum;
-        if (num > 2047 || num < -2048) {
-          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
-          strnum = emptyReg;
-        }
-        else strnum = std::to_string(num);
-        Emit(f, "\tlw\t" + line[2] + ", " + strnum + "(sp)");
+        Emit(f, "\tlw\t" + line[2] + ", " + _strNum(f, num) + "(sp)");
       }
       else {
         Emit(f, "\tlui\t" + line[2] + ", \%hi(" + line[1] + ")");
@@ -318,21 +320,18 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
     case TType::TLoadAddr : {       /* loadaddr int/gvar reg */
       if(_isNum(line[1])) { 
         int num = 4 * std::stoi(line[1]);
-        std::string strnum;
-        if (num > 2047 || num < -2048) {
-          Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
-          strnum = emptyReg;
-        }
-        else strnum = std::to_string(num);
-        Emit(f, "\tadd\t" + line[2] + ", sp, " + strnum);
+        Emit(f, "\tadd\t" + line[2] + ", sp, " + _strNum(f, num));
       }
       else 
         Emit(f, "\tla\t" + line[2] + ", " + line[1]);
       break;
     }
     case TType::TReturn : {         /* return */
-      Emit(f, "\tlw\tra, " + std::to_string(stackSize - 4) + "(sp)");
-      Emit(f, "\taddi\tsp, sp, " + std::to_string(stackSize));
+      Emit(f, "\tlw\tra, " + _strNum(f, stackSize - 4) + "(sp)");
+      if (stackSize < 2048)
+        Emit(f, "\taddi\tsp, sp, " + std::to_string(stackSize));
+      else
+        Emit(f, "\tadd\tsp, sp, " + _strNum(f, stackSize));
       Emit(f, "\tret");
       break;
     }

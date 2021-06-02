@@ -54,6 +54,7 @@ private:
     }
     return true;
   }
+  std::string _strNum(FILE *f, int num);
   void _codegen(FILE *f, stringvec line);
 
   enum class TType {
