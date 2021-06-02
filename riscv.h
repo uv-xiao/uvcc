@@ -16,8 +16,11 @@ namespace riscv {
 using stringset = std::set<std::string>;
 using stringmap = std::map<std::string, std::string>;
 using stringvec = std::vector<std::string>;
+
+extern int DEBUG_FLAG;
 extern stringset reg_names;
 extern stringmap expr_ops, cond_ops, goto_ops, rimm_ops;
+extern std::string emptyReg;
 
 class RISCVGen {
 private:
@@ -51,7 +54,7 @@ private:
     }
     return true;
   }
-  void _codegen(FILE *f, const stringvec &line);
+  void _codegen(FILE *f, stringvec line);
 
   enum class TType {
     Empty,            /* empty line*/
@@ -59,12 +62,15 @@ private:
     TEndFunc,         /* end f_name */
     TGlobalArr,       /* v1 = malloc 12345 */
     TGlobalVar,       /* v0 = 0 */
-    TAssignInt,       /* reg = integer */
-    TAddLt,           /* reg = reg +/< integer */  
+    TAssignInt,       /* reg = integer */  
     TBiExpr,          /* reg1 = reg2 op reg3 */
-    TBiCond,          /* reg1 = reg2 condop reg3 */
+    TBiseqz,          /* reg1 = reg2 >=/<=/== reg3 */
+    TBisnez,          /* reg1 = reg2 ||/!= reg3*/
     TAnd,             /* reg1 = reg2 && reg3 */
+    TBiImm,           /* reg1 = reg2 op imm*/
     TAssignReg,       /* reg1 = reg2 */
+    TUExpr3,          /* reg1 = -reg2 / reg1 = !reg2 */
+    TUExpr4,          /* reg1 = - reg2 / reg1 = ! reg2 */
     TAssignToArr,     /* reg [1] = reg */
     TAssignFromArr,   /* reg = reg [2] */
     TCJump,           /* if reg1 op reg2 goto l3 */
@@ -74,7 +80,6 @@ private:
     TStore,           /* store r0 4 */
     TLoad,            /* load int reg */
     TLoadAddr,        /* loadaddr int/gvar reg */
-    TMinus,           /* reg = - reg */
     TReturn           /* return */
   };
   TType _which(const stringvec &line);

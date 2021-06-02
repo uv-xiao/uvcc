@@ -12,10 +12,12 @@ stringset reg_names = {"x0", "t0", "t1", "t2", "t3", "t4", "t5", "t6",
 stringmap expr_ops = {{"+", "add"}, {"-", "sub"},
                       {"*", "mul"}, {"/", "div"}, {"%", "rem"},
                       {"<", "slt"}, {">", "sgt"}},
-          cond_ops = {{"||","or" }, {"!=","xor"}, {"==", "sub"}},
+          seqz_ops = {{">=", "slt"}, {"<=", "sgt"}, {"==", "xor"}},
+          snez_ops = {{"||", "or"}, {"!=", "xor"}},
           goto_ops = {{"<", "blt"}, {">", "bgt"}, {"!=", "bne"},
                       {"==","beq"}, {"<=","ble"}, {">=", "bge"}},
-          rimm_ops = {{"+", "add"}, {"<", "slti"}};
+          rimm_ops = {{"+", "addi"}, {"<", "slti"}};
+std::string emptyReg = "s0";
 
 stringvec RISCVGen::_split(const std::string &line, char sep) {
     std::stringstream sin(line);
@@ -75,10 +77,10 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
   if(len == 3 && _inSet(reg_names, line[0]) && _isNum(line[2]))
     return TType::TAssignInt;
 
-  /* reg = reg +/< integer */
-  if(len == 5 && _inSet(reg_names, line[0]) && _inSet(reg_names, line[2])
-          && _isNum(line[4]) && _inMap(rimm_ops, line[3]))
-    return TType::TAssignInt;
+  /* reg = reg +/< integer */  
+  if (len == 5 && _inSet(reg_names, line[0])
+          && _inSet(reg_names, line[2]) && _isNum(line[4]))
+    return TType::TBiImm;
 
   /* reg1 = reg2 op reg3 */
   if(len == 5 && _inSet(reg_names, line[0]) 
@@ -86,11 +88,17 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
           && _inMap(expr_ops, line[3]))
     return TType::TBiExpr;
 
-  /* reg1 = reg2 condop reg3 */
+  /* reg1 = reg2 >=/<=/== reg3 */
   if(len == 5 && _inSet(reg_names, line[0]) 
           && _inSet(reg_names, line[2]) && _inSet(reg_names, line[4])
-          && _inMap(cond_ops, line[3]))
-    return TType::TBiCond;
+          && _inMap(seqz_ops, line[3]))
+    return TType::TBiseqz;
+
+  /* reg1 = reg2 ||/!= reg3*/
+  if(len == 5 && _inSet(reg_names, line[0]) 
+          && _inSet(reg_names, line[2]) && _inSet(reg_names, line[4])
+          && _inMap(snez_ops, line[3]))
+    return TType::TBisnez;
 
   /* reg1 = reg2 && reg3 */
   if(len == 5 && _inSet(reg_names, line[0]) 
@@ -101,6 +109,16 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
   /* reg1 = reg2 */
   if(len == 3 && _inSet(reg_names, line[0]) && _inSet(reg_names, line[2]))
     return TType::TAssignReg;
+
+  /* reg1 = [-/!]reg2 */
+  if (len == 3 && _inSet(reg_names, line[0]) 
+               && _inSet(reg_names, line[2].substr(1)))
+    return TType::TUExpr3;
+
+  /* reg1 = -/! reg2 */
+  if(len == 4 && line[1] == "=" && (line[2] == "-" || line[2] == "!") && 
+      _inSet(reg_names, line[0]) && _inSet(reg_names, line[3]))
+    return TType::TUExpr4;
 
   /* reg [1] = reg */
   if(len == 4 && line[2] == "=" && line[1].back() == ']')
@@ -139,10 +157,6 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
   if(len == 3 && line[0] == "loadaddr")
     return TType::TLoadAddr;
 
-  /* reg = - reg */
-  if(len == 4 && _inSet(reg_names, line[0]) && _inSet(reg_names, line[3]))
-    return TType::TMinus;
-
   /* return */
   if(line[0] == "return")
     return TType::TReturn;
@@ -151,7 +165,7 @@ RISCVGen::TType RISCVGen::_which(const stringvec &line) {
   return TType::Empty;
 }
 
-void RISCVGen::_codegen(FILE *f, const stringvec &line) {
+void RISCVGen::_codegen(FILE *f, stringvec line) {
   if (DEBUG_FLAG) {
     std::cerr << "{" << std::endl;
     for (auto s : line) {
@@ -171,9 +185,9 @@ void RISCVGen::_codegen(FILE *f, const stringvec &line) {
       Emit(f, "\t.global\t" + fname);
       Emit(f, "\t.type\t" + fname + ", @function");
       Emit(f, fname + ":");
-      stackSize = (((size + 2) >> 2) + 1) << 4;
-      Emit(f, "\tadd\tsp,sp,-" + std::to_string(stackSize));
-      Emit(f, "\tsd\tra," +std::to_string(stackSize - 8) + "(sp)");  
+      stackSize = (size / 4 + 1) * 16;
+      Emit(f, "\tadd\tsp, sp, -" + std::to_string(stackSize));
+      Emit(f, "\tsd\tra," +std::to_string(stackSize - 4) + "(sp)");  
       break;
     }    
     case TType::TEndFunc : {        /* end f_name */
@@ -182,8 +196,8 @@ void RISCVGen::_codegen(FILE *f, const stringvec &line) {
       break;
     }
     case TType::TGlobalArr : {      /* v1 = malloc 12345 */
-      std::string size = std::to_string(std::stoi(line[3]) * 4);
-      Emit(f, std::string("\t.comm\t") + line[0] + "," + size + ",4");
+      std::string size = std::to_string(std::stoi(line[3]));
+      Emit(f, std::string("\t.comm\t") + line[0] + ", " + size + ", 4");
       break;
     }
     case TType::TGlobalVar : {      /* v0 = 0 */
@@ -201,50 +215,62 @@ void RISCVGen::_codegen(FILE *f, const stringvec &line) {
       Emit(f, "\tli\t" + line[0] + ", " + line[2]);
       break;
     }
-    case TType::TAddLt : {          /* reg = reg +/< integer */ 
-      Emit(f, "\t" + rimm_ops[line[3]] + "\t" + line[0] + "," + line[2] + "," + line[4]);
-      break;
-    }
     case TType::TBiExpr : {         /* reg1 = reg2 op reg3 */
-      Emit(f, "\t" + expr_ops[line[3]] + "\t" + line[0] + "," + line[2] + "," + line[4]);
+      Emit(f, "\t" + expr_ops[line[3]] + "\t" + line[0] + ", " + line[2] + ", " + line[4]);
       break;
     }
-    case TType::TBiCond : {         /* reg1 = reg2 condop reg3 */
-      Emit(f, "\t" + cond_ops[line[3]] + "\t" + line[0] + "," + line[2] + "," + line[4]);
-      std::string intrin = "snez";
-      if(line[3] == "==") intrin = "seqz";
-      Emit(f, "\t" + intrin + "\t" + line[0] + "," + line[0]);
+    case TType::TBiseqz : {         /* reg1 = reg2 seqz_op reg3 */
+      Emit(f, "\t" + seqz_ops[line[3]] + "\t" + line[0] + ", " + line[2] + ", " + line[4]);
+      Emit(f, "\tseqz\t"  + line[0] + ", " + line[0]);
+      break;
+    }
+    case TType::TBisnez : {         /* reg1 = reg2 snez_op reg3 */
+      Emit(f, "\t" + snez_ops[line[3]] + "\t" + line[0] + ", " + line[2] + ", " + line[4]);
+      Emit(f, "\tsnez\t"   + line[0] + ", " + line[0]);
       break;
     }
     case TType::TAnd : {            /* reg1 = reg2 && reg3 */
-      auto lbl0 = _newLabel();
-      auto lbl1 = _newLabel();
-      Emit(f, "\tbeqz\t" + line[2] + ", " + lbl0);
-      Emit(f, "\tbeqz\t" + line[4] + ", " + lbl0);
-      Emit(f, "\tli\t" + line[0] + ",1");
-      Emit(f, "\tj\t" + lbl1);
-      Emit(f, lbl0 + ":");
-      Emit(f, "\tli\t" + line[0] + ",0");
-      Emit(f, lbl1 + ":");
+      Emit(f, std::string("\tsnez") + "\t" + line[0] + ", " + line[2]);
+      Emit(f, std::string("\tsnez") + "\t" + emptyReg + ", " + line[4]);
+      Emit(f, std::string("\tand\t") + line[0] + ", " + line[0] + ", " + emptyReg);
+      break;
+    }
+    case TType::TBiImm : {          /* reg1 = reg2 op int*/
+
+      if (DEBUG_FLAG)
+        std::cerr << "Meet TBiImm!" << std::endl;
+      Emit(f, std::string("\tli") + "\t" + emptyReg + ", " + line[4]);
+      line[4] = emptyReg;
+      _codegen(f, line);
       break;
     }
     case TType::TAssignReg : {      /* reg1 = reg2 */
-      Emit(f, "\tmv\t" + line[0] + "," + line[2]);
+      Emit(f, "\tmv\t" + line[0] + ", " + line[2]);
+      break;
+    }
+    case TType::TUExpr3 : {         /* reg1 = [-/!]reg2 */
+      Emit(f, ((line[2][0] == '-') ? "\tneg\t" : "\tseqz\t") + 
+              line[0] + ", " + line[2].substr(1));
+      break;
+    }
+    case TType::TUExpr4 : {         /* reg1 = -/! reg2 */
+      Emit(f, ((line[2][0] == '-') ? "\tneg\t" : "\tseqz\t") + 
+              line[0] + ", " + line[3]);
       break;
     }
     case TType::TAssignToArr : {    /* reg [1] = reg */
       auto snum = line[1].substr(0, line[1].length() - 1).substr(1);
-      Emit(f, "\tsw\t" + line[3] + "," + snum + "(" + line[0] + ")");
+      Emit(f, "\tsw\t" + line[3] + ", " + snum + "(" + line[0] + ")");
       break;
     }
     case TType::TAssignFromArr : {  /* reg = reg [2] */
       auto snum = line[3].substr(0, line[3].length() - 1).substr(1);
-      Emit(f, "\tlw\t" + line[0] + "," + snum + "(" + line[2] + ")");
+      Emit(f, "\tlw\t" + line[0] + ", " + snum + "(" + line[2] + ")");
       break;
     }
     case TType::TCJump : {          /* if reg1 op reg2 goto l3 */
-      Emit(f, "\t" + goto_ops[line[2]] + "\t" + line[1] + "," + line[3] 
-          + ",." + line[5]);
+      Emit(f, "\t" + goto_ops[line[2]] + "\t" + line[1] + ", " + line[3] 
+          + ", ." + line[5]);
       break;
     }
     case TType::TLabel : {          /* label */
@@ -262,50 +288,32 @@ void RISCVGen::_codegen(FILE *f, const stringvec &line) {
     }
     case TType::TStore : {          /* store r0 4 */
       auto snum = std::to_string(std::stoi(line[2]) * 4);
-      Emit(f, "\tsw\t" + line[1] + "," + snum + "(sp)");
+      Emit(f, "\tsw\t" + line[1] + ", " + snum + "(sp)");
       break;
     }
     case TType::TLoad : {           /* load int reg */
       if(_isNum(line[1]))
-        Emit(f, "\tlw\t" + line[2] + "," + 
+        Emit(f, "\tlw\t" + line[2] + ", " + 
              std::to_string(4 * std::stoi(line[1])) + "(sp)");
       else {
-        Emit(f, "\tlui\t" + line[2] + ",\%hi(" + line[1] + ")");
+        Emit(f, "\tlui\t" + line[2] + ", \%hi(" + line[1] + ")");
         Emit(f, "\tlw\t" + line[2] + 
-             "," + "\%lo(" + line[1] + ")(" + line[2] + ")");
+             ", " + "\%lo(" + line[1] + ")(" + line[2] + ")");
       }
       break;
     }
     case TType::TLoadAddr : {       /* loadaddr int/gvar reg */
       if(_isNum(line[1]))
-        Emit(f, "\tadd\t" + line[2] + ",sp," + 
+        Emit(f, "\tadd\t" + line[2] + ", sp, " + 
               std::to_string(4 * std::stoi(line[1])));
-      else {
-        Emit(f, "\tlui\t" + line[2] + ",\%hi(" + line[1] + ")");
-        Emit(f, "\tadd\t" + line[2] + "," + line[2] + ",\%lo(" + line[1] + ")");
-      }
-      break;
-    }
-    case TType::TMinus : {          /* reg = - reg */
-      if(line[2] == "-")
-        Emit(f, "\tsub\t" + line[3] + ",x0," + line[3]);
-      else {
-        Emit(f, "\tsnez\t" + line[0] + "," + line[3]);
-        auto lbl0 = _newLabel();
-        auto lbl1 = _newLabel();
-        Emit(f, "\tbeq\t" + line[0] + ",x0," + lbl0);
-        Emit(f, "\tli\t" + line[0] + ",0");
-        Emit(f, "\tj\t" + lbl1);
-        Emit(f, lbl0 + ":");
-        Emit(f, "\tli\t" + line[0] + ",1");
-        Emit(f, lbl1 + ":");
-      }
+      else 
+        Emit(f, "\tla\t" + line[2] + ", " + line[1]);
       break;
     }
     case TType::TReturn : {         /* return */
-      Emit(f, "\tlw\tra," + std::to_string(stackSize - 8) + "(sp)");
-      Emit(f, "\tadd\tsp,sp," + std::to_string(stackSize));
-      Emit(f, "\tjr\tra");
+      Emit(f, "\tlw\tra," + std::to_string(stackSize - 4) + "(sp)");
+      Emit(f, "\taddi\tsp, sp, " + std::to_string(stackSize));
+      Emit(f, "\tret");
       break;
     }
     default:
