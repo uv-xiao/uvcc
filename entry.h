@@ -1,5 +1,4 @@
-#ifndef _ENTRY_H_
-#define _ENTRY_H_
-
-extern int DEBUG_LEVEL;
-#endif // _ENTRY_H_
+#ifndef _ENTRY_H
+#define _ENTRY_H
+#include "riscv.h"
+#endif
