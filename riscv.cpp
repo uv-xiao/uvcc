@@ -187,7 +187,7 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       Emit(f, fname + ":");
       stackSize = (size / 4 + 1) * 16;
       Emit(f, "\tadd\tsp, sp, -" + std::to_string(stackSize));
-      Emit(f, "\tsd\tra," +std::to_string(stackSize - 4) + "(sp)");  
+      Emit(f, "\tsw\tra, " +std::to_string(stackSize - 4) + "(sp)");  
       break;
     }    
     case TType::TEndFunc : {        /* end f_name */
@@ -311,7 +311,7 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       break;
     }
     case TType::TReturn : {         /* return */
-      Emit(f, "\tlw\tra," + std::to_string(stackSize - 4) + "(sp)");
+      Emit(f, "\tlw\tra, " + std::to_string(stackSize - 4) + "(sp)");
       Emit(f, "\taddi\tsp, sp, " + std::to_string(stackSize));
       Emit(f, "\tret");
       break;
