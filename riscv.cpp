@@ -198,10 +198,19 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
       stackSize = (size / 4 + 1) * 16;
 
       if (stackSize < 2048)
-        Emit(f, "\taddi\tsp, sp, -" + _strNum(f, stackSize));
-      else
-        Emit(f, "\tadd\tsp, sp, -" + _strNum(f, stackSize));
-      Emit(f, "\tsw\tra, " + _strNum(f, stackSize - 4) + "(sp)");  
+        Emit(f, "\taddi\tsp, sp, -" + std::to_string(stackSize));
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(-stackSize));
+        Emit(f, "\tadd\tsp, sp, " + emptyReg);
+      }
+      
+      if (stackSize - 4 < 2048)
+        Emit(f, "\tsw\tra, " + std::to_string(stackSize - 4) + "(sp)");
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(stackSize - 4));
+        Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", sp");
+        Emit(f, "\tsw\tra, 0(" + emptyReg + ")");
+      }
       break;
     }    
     case TType::TEndFunc : {        /* end f_name */
@@ -314,7 +323,13 @@ void RISCVGen::_codegen(FILE *f, stringvec line) {
     }
     case TType::TStore : {          /* store r0 4 */
       int num = std::stoi(line[2]) * 4;
-      Emit(f, "\tsw\t" + line[1] + ", " + _strNum(f, num) + "(sp)");
+      if (num < 2048) 
+        Emit(f, "\tsw\t" + line[1] + ", " + std::to_string(num) + "(sp)");
+      else {
+        Emit(f, "\tli\t" + emptyReg + ", " + std::to_string(num));
+        Emit(f, "\tadd\t" + emptyReg + ", " + emptyReg + ", sp");
+        Emit(f, "\tsw\t" + line[1] + ", 0(" + emptyReg + ")");
+      }
       break;
     }
     case TType::TLoad : {           /* load int/gvar reg */
