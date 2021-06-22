@@ -46,6 +46,7 @@
     "new": "cpp",
     "sstream": "cpp",
     "streambuf": "cpp",
-    "typeinfo": "cpp"
+    "typeinfo": "cpp",
+    "cinttypes": "cpp"
   }
 }

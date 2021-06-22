@@ -1,0 +1,35 @@
+v0 = 0
+v1 = malloc 40
+
+f_main [0] [0]
+  call f_getint
+  loadaddr v0 t0
+  t0[0] = a0
+  load v0 t0
+  t1 = 10
+  if t0 <= t1 goto l0
+  a0 = 1
+  return
+l0:
+  s0 = 0
+  s1 = s0
+l1:
+  load v0 t0
+  if s0 >= t0 goto l2
+  call f_getint
+  t0 = a0
+  t1 = 4
+  t2 = s0 * t1
+    loadaddr v1 t3
+    t3 = t3 + t2
+  t3[0] = t0
+  t4 = t3[0]
+  s1 = s1 + t4
+  s0 = s0 + 1
+  goto l1
+l2:
+  a0 = s1
+  call f_putint
+  a0 = 0
+  return
+end f_main
